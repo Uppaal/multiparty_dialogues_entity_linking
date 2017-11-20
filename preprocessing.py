@@ -5,35 +5,40 @@ import fasttext
 def __main__():
     ## hyperparameters ##
     embeddings_size = 50
-    text_transcript = '001.txt'
+    text_transcript = 'data/text_transcript.txt'
     ## main ##
     train = pd.read_csv('data/friends.train.episode_delim.conll',sep='\s+',header=None,comment='#')
     train_scene = pd.read_csv('data/friends.train.scene_delim.conll',sep='\s+',header=None,comment='#')
     trial = pd.read_csv('data/friends.trial.episode_delim.conll',sep='\s+',header=None,comment='#')
     trial_scene = pd.read_csv('data/friends.trial.scene_delim.conll',sep='\s+',header=None,comment='#')
     dfs = [train,train_scene,trial,trial_scene]
-    dfs = [clean(df) for df in dfs]
     with open(text_transcript,'wt') as f:
-        f.write(make_transcript(dfs))
+       f.write(make_transcript(dfs))
     embeddings_model = fasttext.skipgram(text_transcript,'embeddings_model',min_count=1,dim=50)
     feature_matrices = []
     pairs = []
     for df in dfs:
         pairs.append(make_feature_matrices.append(make_feature_matrices(train)))
+    pairs = np.array(pairs)
+    np.save('pairs.npy',pairs)
 
 def make_feature_matrices(df):
     mentions,mentions_y,mentions_idx = get_mention_arrays(df)
+    print('Mentions done')
     words,words_idx = get_words(df)
     pre_words = get_pre_words(mentions_idx,words,words_idx)
     next_words = get_next_words(mentions_idx,words,words_idx)
+    print('words done')
     sents,sents_idx = get_sent_idx(df)
     curr_sents = get_current_sents(mentions_idx,sents,sents_idx)
     next_sents = get_next_sents(mentions_idx,sents,sents_idx)
     pre_sents = get_pre_sents(mentions_idx,sents,sents_idx)
+    print('sents done')
     ut,ut_idx = get_utterances_idx(df)
     curr_ut = get_current_utterance(mentions_idx,ut,ut_idx)
     next_ut = get_next_utterances(mentions_idx,ut,ut_idx)
     pre_ut = get_pre_utterances(mentions_idx,ut,ut_idx)
+    print('ut done')
     phi = [0]*4
     phi[1] = get_phi_1(mentions)
     phi[2] = phi_2(pre_words,next_words,mentions)
@@ -43,7 +48,9 @@ def make_feature_matrices(df):
     phi[2] = np.reshape(phi_2,[13280,7,50,1])
     phi[3] = np.reshape(phi_3,[13280,5,50,1])
     phi[4] = np.reshape(phi_4,[13280,5,50,1])
+    print('phi done')
     pairs = make_mention_pairs(phi,mentions_y)
+    print('pairs done')
     return pairs
 
 def get_phi_1(mentions):
@@ -52,31 +59,31 @@ def get_phi_1(mentions):
         t = i.split()
         if len(t)==0:
             raise ValueError('Empty mention')
-        if len(t)==1:
+        elif len(t)==1:
             phi.append(get_embeddings(t+['','']))
-        if len(t)==2:
+        elif len(t)==2:
             phi.append(get_embeddings(t+['']))
         else:
             phi.append(get_embeddings(t[0:3]))
-    return phi
+    return np.array(phi)
 
 def get_phi_2(pre_words,next_words,mentions):
     pre = [get_embeddings(i) for i in pre_words]
     suc = [get_embeddings(i) for i in next_words]
-    avg_words = get_avg_embeddings(mentions)
-    return [np.vstack((i[0],i[1],i[2],j[0],j[1],j[2],k)) for i,j,k in zip(pre,suc,avg)]
+    avg = get_avg_embeddings(mentions)
+    return np.array([np.vstack((i[0],i[1],i[2],j[0],j[1],j[2],k)) for i,j,k in zip(pre,suc,avg)])
 
 def get_phi_3(pre_sents,next_sents,curr_sents):
     p = get_multiple_avg_embeddings(pre_sents)
     s = get_avg_embeddings(next_sents)
     c = get_avg_embeddings(curr_sents)
-    return [np.vstack((i[0],i[1],i[2],j,k)) for i,j,k in zip(p,s,c)]
+    return np.array([np.vstack((i[0],i[1],i[2],j,k)) for i,j,k in zip(p,s,c)])
 
 def get_phi_4(pre_ut,next_ut,curr_ut):
     p = get_multiple_avg_embeddings(pre_ut)
     s = get_avg_embeddings(next_ut)
     c = get_avg_embeddings(curr_ut)
-    return [np.vstack((i[0],i[1],i[2],j,k)) for i,j,k in zip(p,s,c)]
+    return np.array([np.vstack((i[0],i[1],i[2],j,k)) for i,j,k in zip(p,s,c)])
 
 def make_mention_pairs(phi,mentions_y,window=7):
     tuples = []
@@ -246,13 +253,13 @@ def get_pre_utterances(mentions_idx,ut,ut_idx):
 def get_embeddings(l):
     #ip : array of words : n
     #op : array : embedding of each word : n
-    return [embeddings_model[i] for i in l]
+    return np.array([embeddings_model[i] for i in l])
 
 def get_avg_embeddings(l):
     #ip : array of sentences : n x s
     #op : array : average of embeddings of all words for each sentence : n
-    a = [np.array([embeddings_model[i] for i in s.split()]) for s in l]
-    return [np.sum(i,axis=0)/len(i) for i in a]
+    a = [np.array([embeddings_model[i] for i in sent.split()]) for sent in l]
+    return np.array([np.sum(i,axis=0)/len(i) for i in a])
 
 def get_multiple_avg_embeddings(l):
     #ip : array of array of sentences : n x 3 x s
@@ -269,7 +276,7 @@ def get_multiple_avg_embeddings(l):
                     sent_emb.append(embeddings_model[word])
                 sent_arr_emb.append(np.sum(sent_emb,axis=0)/len(sent_emb))
         ret.append(sent_arr_emb)
-    return ret
+    return np.array(ret)
 
 if __name__=='__main__':
     __main__()
