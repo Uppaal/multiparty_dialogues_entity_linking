@@ -10,17 +10,17 @@ def __main__():
     global embeddings_size
     ## hyperparameters ##
     embeddings_size = 50
-    text_transcript = '002.txt'
+    text_transcript = 'data/text_transcript.txt'
     ## main ##
     train = pd.read_csv('data/friends.train.episode_delim.conll',sep='\s+',header=None,comment='#')
     train_scene = pd.read_csv('data/friends.train.scene_delim.conll',sep='\s+',header=None,comment='#')
     trial = pd.read_csv('data/friends.trial.episode_delim.conll',sep='\s+',header=None,comment='#')
     trial_scene = pd.read_csv('data/friends.trial.scene_delim.conll',sep='\s+',header=None,comment='#')
     dfs = [train,train_scene,trial,trial_scene]
-    # with open(text_transcript,'wt') as f:
-       # f.write(make_transcript(dfs))
-    #embeddings_model = fasttext.skipgram(text_transcript,'embeddings_model',min_count=1,dim=50)
-    embeddings_model = fasttext.load_model('embeddings_model.bin')
+    with open(text_transcript,'wt') as f:
+       f.write(make_transcript(dfs))
+    embeddings_model = fasttext.skipgram(text_transcript,'embeddings_model',min_count=1,dim=50)
+    # embeddings_model = fasttext.load_model('embeddings_model.bin')
     print("Embeddings trained")
     pairs = []
     for df in dfs:
