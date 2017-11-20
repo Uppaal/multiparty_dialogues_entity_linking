@@ -5,7 +5,7 @@ import fasttext
 def __main__():
     ## hyperparameters ##
     embeddings_size = 50
-    text_transcript = 'data/text_transcript.txt'
+    text_transcript = '001.txt'
     ## main ##
     train = pd.read_csv('data/friends.train.episode_delim.conll',sep='\s+',header=None,comment='#')
     train_scene = pd.read_csv('data/friends.train.scene_delim.conll',sep='\s+',header=None,comment='#')
@@ -17,8 +17,9 @@ def __main__():
         f.write(make_transcript(dfs))
     embeddings_model = fasttext.skipgram(text_transcript,'embeddings_model',min_count=1,dim=50)
     feature_matrices = []
+    pairs = []
     for df in dfs:
-        feature_matrices.append(make_feature_matrices(train))
+        pairs.append(make_feature_matrices.append(make_feature_matrices(train)))
 
 def make_feature_matrices(df):
     mentions,mentions_y,mentions_idx = get_mention_arrays(df)
@@ -42,6 +43,8 @@ def make_feature_matrices(df):
     phi[2] = np.reshape(phi_2,[13280,7,50,1])
     phi[3] = np.reshape(phi_3,[13280,5,50,1])
     phi[4] = np.reshape(phi_4,[13280,5,50,1])
+    pairs = make_mention_pairs(phi,mentions_y)
+    return pairs
 
 def get_phi_1(mentions):
     phi = []
@@ -74,6 +77,20 @@ def get_phi_4(pre_ut,next_ut,curr_ut):
     s = get_avg_embeddings(next_ut)
     c = get_avg_embeddings(curr_ut)
     return [np.vstack((i[0],i[1],i[2],j,k)) for i,j,k in zip(p,s,c)]
+
+def make_mention_pairs(phi,mentions_y,window=7):
+    tuples = []
+    for i in range(len(phi[1])):
+        for j in range(i+1,window+i+1):
+            if j<len(phi[1]):
+                tuples.append([\
+                              [phi[k][i] for k in range(1,5)],\
+                              [phi[k][j] for k in range(1,5)],\
+                              1 if mentions_y[i]==mentions_y[j] else 0\
+                             ])
+            else:
+                break
+    return tuples
 
 def make_transcript(dfs,idx=6):
     words = ''
