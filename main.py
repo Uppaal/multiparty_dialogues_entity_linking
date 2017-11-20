@@ -33,6 +33,47 @@ def make_feature_matrices(df):
     curr_ut = get_current_utterance(mentions_idx,ut,ut_idx)
     next_ut = get_next_utterances(mentions_idx,ut,ut_idx)
     pre_ut = get_pre_utterances(mentions_idx,ut,ut_idx)
+    phi = [0]*4
+    phi[1] = get_phi_1(mentions)
+    phi[2] = phi_2(pre_words,next_words,mentions)
+    phi[3] = phi_3(pre_sents,next_sents,curr_sents)
+    phi[4] = phi_4(pre_ut,next_ut,curr_ut)
+    phi[1] = np.reshape(phi_1,[13280,3,50,1])
+    phi[2] = np.reshape(phi_2,[13280,7,50,1])
+    phi[3] = np.reshape(phi_3,[13280,5,50,1])
+    phi[4] = np.reshape(phi_4,[13280,5,50,1])
+
+def get_phi_1(mentions):
+    phi = []
+    for i in mentions:
+        t = i.split()
+        if len(t)==0:
+            raise ValueError('Empty mention')
+        if len(t)==1:
+            phi.append(get_embeddings(t+['','']))
+        if len(t)==2:
+            phi.append(get_embeddings(t+['']))
+        else:
+            phi.append(get_embeddings(t[0:3]))
+    return phi
+
+def get_phi_2(pre_words,next_words,mentions):
+    pre = [get_embeddings(i) for i in pre_words]
+    suc = [get_embeddings(i) for i in next_words]
+    avg_words = get_avg_embeddings(mentions)
+    return [np.vstack((i[0],i[1],i[2],j[0],j[1],j[2],k)) for i,j,k in zip(pre,suc,avg)]
+
+def get_phi_3(pre_sents,next_sents,curr_sents):
+    p = get_multiple_avg_embeddings(pre_sents)
+    s = get_avg_embeddings(next_sents)
+    c = get_avg_embeddings(curr_sents)
+    return [np.vstack((i[0],i[1],i[2],j,k)) for i,j,k in zip(p,s,c)]
+
+def get_phi_4(pre_ut,next_ut,curr_ut):
+    p = get_multiple_avg_embeddings(pre_ut)
+    s = get_avg_embeddings(next_ut)
+    c = get_avg_embeddings(curr_ut)
+    return [np.vstack((i[0],i[1],i[2],j,k)) for i,j,k in zip(p,s,c)]
 
 def make_transcript(dfs,idx=6):
     words = ''
@@ -153,7 +194,11 @@ def get_pre_sents(mentions_idx,sents,sents_idx):
     pre_sents = []
     for idx in mentions_idx:
         t = sents_idx[idx[0]]
-        pre_sents.append([                         sents[t-1] if (t-1)>=0 else '',                          sents[t-2] if (t-2)>=0 else '',                          sents[t-3] if (t-3)>=0 else ''                         ])
+        pre_sents.append([\
+                         sents[t-1] if (t-1)>=0 else '',\
+                          sents[t-2] if (t-2)>=0 else '',\
+                          sents[t-3] if (t-3)>=0 else ''\
+                         ])
     return pre_sents
 
 def get_current_utterance(mentions_idx,ut,ut_idx):
@@ -174,16 +219,40 @@ def get_pre_utterances(mentions_idx,ut,ut_idx):
     pre_ut = []
     for idx in mentions_idx:
         t = ut_idx[idx[0]]
-        pre_ut.append([                         ut[t-1] if (t-1)>=0 else '',                          ut[t-2] if (t-2)>=0 else '',                          ut[t-3] if (t-3)>=0 else ''                         ])
+        pre_ut.append([\
+                         ut[t-1] if (t-1)>=0 else '',\
+                          ut[t-2] if (t-2)>=0 else '',\
+                          ut[t-3] if (t-3)>=0 else ''\
+                         ])
     return pre_ut
 
 def get_embeddings(l):
+    #ip : array of words : n
+    #op : array : embedding of each word : n
     return [embeddings_model[i] for i in l]
 
 def get_avg_embeddings(l):
+    #ip : array of sentences : n x s
+    #op : array : average of embeddings of all words for each sentence : n
     a = [np.array([embeddings_model[i] for i in s.split()]) for s in l]
     return [np.sum(i,axis=0)/len(i) for i in a]
 
 def get_multiple_avg_embeddings(l):
-    a = [[np.array([embeddings_model[i] for i in sent.split()]) for sent in s] for s in l]
-    return [[np.sum(i,axis=0)/len(i) for i in s] for s in a]
+    #ip : array of array of sentences : n x 3 x s
+    #op : array of array of average of embeddings of all words for each sentence : n x 3
+    ret = []
+    for sent_arr in l:
+        sent_arr_emb = []
+        for sent in sent_arr:
+            if sent=='':
+                sent_arr_emb.append([0]*embeddings_size)
+            else:
+                sent_emb = []
+                for word in sent.split():
+                    sent_emb.append(embeddings_model[word])
+                sent_arr_emb.append(np.sum(sent_emb,axis=0)/len(sent_emb))
+        ret.append(sent_arr_emb)
+    return ret
+
+if __name__=='__main__':
+    __main__()
