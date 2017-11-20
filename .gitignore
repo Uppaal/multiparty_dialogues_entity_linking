@@ -1,0 +1,6 @@
+data/*
+*.ipynb_checkpoints*
+*model.bin
+*model.vec
+*remove_me*
+*.txt
