@@ -2,12 +2,7 @@ import pandas as pd
 import numpy as np
 import fasttext
 
-global embeddings_model
-global embeddings_size
-
 def __main__():
-    global embeddings_model
-    global embeddings_size
     ## hyperparameters ##
     embeddings_size = 50
     text_transcript = '002.txt'
@@ -19,12 +14,11 @@ def __main__():
     dfs = [train,train_scene,trial,trial_scene]
     # with open(text_transcript,'wt') as f:
        # f.write(make_transcript(dfs))
-    #embeddings_model = fasttext.skipgram(text_transcript,'embeddings_model',min_count=1,dim=50)
-    embeddings_model = fasttext.load_model('embeddings_model.bin')
-    print("Embeddings trained")
+    embeddings_model = fasttext.skipgram(text_transcript,'embeddings_model',min_count=1,dim=50)
+    feature_matrices = []
     pairs = []
     for df in dfs:
-        pairs.append(make_feature_matrices(train))
+        pairs.append(make_feature_matrices.append(make_feature_matrices(train)))
     pairs = np.array(pairs)
     np.save('pairs.npy',pairs)
 
@@ -45,15 +39,15 @@ def make_feature_matrices(df):
     next_ut = get_next_utterances(mentions_idx,ut,ut_idx)
     pre_ut = get_pre_utterances(mentions_idx,ut,ut_idx)
     print('ut done')
-    phi = [0]*5
+    phi = [0]*4
     phi[1] = get_phi_1(mentions)
-    phi[2] = get_phi_2(pre_words,next_words,mentions)
-    phi[3] = get_phi_3(pre_sents,next_sents,curr_sents)
-    phi[4] = get_phi_4(pre_ut,next_ut,curr_ut)
-    phi[1] = np.reshape(phi[1],[13280,3,50,1])
-    phi[2] = np.reshape(phi[2],[13280,7,50,1])
-    phi[3] = np.reshape(phi[3],[13280,5,50,1])
-    phi[4] = np.reshape(phi[4],[13280,5,50,1])
+    phi[2] = phi_2(pre_words,next_words,mentions)
+    phi[3] = phi_3(pre_sents,next_sents,curr_sents)
+    phi[4] = phi_4(pre_ut,next_ut,curr_ut)
+    phi[1] = np.reshape(phi_1,[13280,3,50,1])
+    phi[2] = np.reshape(phi_2,[13280,7,50,1])
+    phi[3] = np.reshape(phi_3,[13280,5,50,1])
+    phi[4] = np.reshape(phi_4,[13280,5,50,1])
     print('phi done')
     pairs = make_mention_pairs(phi,mentions_y)
     print('pairs done')
