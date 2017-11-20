@@ -4,3 +4,4 @@ data/*
 *model.vec
 *remove_me*
 *.txt
+*.npy
