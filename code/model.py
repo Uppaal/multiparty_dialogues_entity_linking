@@ -88,6 +88,7 @@ class ACNN(object):
                     self.pooled_outputs["pool" + str(val1) + "_" + str(val2)] = tf.stack((tf.reshape(pool_1,[-1]),tf.reshape(pool_2,[-1]),tf.reshape(pool_3,[-1])))
 
         self.session = tf.Session()
+
         init_op = tf.initialize_all_variables()
         self.session.run(init_op)
 
