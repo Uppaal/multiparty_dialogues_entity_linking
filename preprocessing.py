@@ -45,15 +45,19 @@ def make_feature_matrices(df):
     next_ut = get_next_utterances(mentions_idx,ut,ut_idx)
     pre_ut = get_pre_utterances(mentions_idx,ut,ut_idx)
     print('ut done')
+    speakers,speakers_idx = get_speakers_idx(df)
+    curr_speakers = get_current_speakers(mentions_idx,speakers,speakers_idx)
+    pre_speakers = get_pre_speakers(mentions_idx,speakers,speakers_idx)
+    print('speakers done')
     phi = [0]*5
     phi[1] = get_phi_1(mentions)
     phi[2] = get_phi_2(pre_words,next_words,mentions)
     phi[3] = get_phi_3(pre_sents,next_sents,curr_sents)
     phi[4] = get_phi_4(pre_ut,next_ut,curr_ut)
-    phi[1] = np.reshape(phi[1],[13280,3,50,1])
-    phi[2] = np.reshape(phi[2],[13280,7,50,1])
-    phi[3] = np.reshape(phi[3],[13280,5,50,1])
-    phi[4] = np.reshape(phi[4],[13280,5,50,1])
+    phi[1] = np.reshape(phi[1],[-1,3,50,1])
+    phi[2] = np.reshape(phi[2],[-1,7,50,1])
+    phi[3] = np.reshape(phi[3],[-1,5,50,1])
+    phi[4] = np.reshape(phi[4],[-1,5,50,1])
     print('phi done')
     pairs = make_mention_pairs(phi,mentions_y)
     print('pairs done')
@@ -180,6 +184,20 @@ def get_utterances_idx(df):
         ut_idx.append(cnt)
     return ut,ut_idx
 
+def get_speakers_idx(df):
+    ## change range ##
+    speaker = None
+    speakers = []
+    speakers_idx = []
+    cnt = -1
+    for row_no,row in df.iterrows():
+        if row[9]!=speaker:
+            speakers.append(row[9])
+            cnt += 1
+            speaker = row[9]
+        speakers_idx.append(cnt)
+    return speakers, speakers_idx
+
 def get_mention_arrays(df):
     mentions = []
     mentions_y = []
@@ -255,6 +273,22 @@ def get_pre_utterances(mentions_idx,ut,ut_idx):
                           ut[t-3] if (t-3)>=0 else ''\
                          ])
     return pre_ut
+
+def get_current_speakers(mentions_idx,sents,sents_idx):
+    curr_speakers = []
+    for idx in mentions_idx:
+        curr_speakers.append(speakers[speakers_idx[idx[0]]])
+    return curr_speakers
+
+def get_pre_speakers(mentions_idx,speakers,speakers_idx):
+    print("new")
+    pre_speakers = []
+    for idx in mentions_idx:
+        pre_speakers.append([\
+                           speakers[speakers_idx[idx[0]]-1] if (speakers_idx[idx[0]]-1)>=0 else '',\
+                           speakers[speakers_idx[idx[0]]-2] if (speakers_idx[idx[0]]-2)>=0 else ''\
+                          ])
+    return pre_speakers
 
 def get_embeddings(l):
     #ip : array of words : n
