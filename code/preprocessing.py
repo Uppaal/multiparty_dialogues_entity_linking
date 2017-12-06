@@ -4,18 +4,21 @@ import fasttext
 
 global embeddings_model
 global embeddings_size
+global data_path
+
+data_path = "../data/"
 
 def __main__():
     global embeddings_model
     global embeddings_size
     ## hyperparameters ##
     embeddings_size = 50
-    text_transcript = 'data/text_transcript.txt'
+    text_transcript = data_path + 'text_transcript.txt'
     ## main ##
-    train = pd.read_csv('data/friends.train.episode_delim.conll',sep='\s+',header=None,comment='#')
-    train_scene = pd.read_csv('data/friends.train.scene_delim.conll',sep='\s+',header=None,comment='#')
-    trial = pd.read_csv('data/friends.trial.episode_delim.conll',sep='\s+',header=None,comment='#')
-    trial_scene = pd.read_csv('data/friends.trial.scene_delim.conll',sep='\s+',header=None,comment='#')
+    train = pd.read_csv(data_path + 'friends.train.episode_delim.conll',sep='\s+',header=None,comment='#')
+    train_scene = pd.read_csv(data_path + 'friends.train.scene_delim.conll',sep='\s+',header=None,comment='#')
+    trial = pd.read_csv(data_path + 'friends.trial.episode_delim.conll',sep='\s+',header=None,comment='#')
+    trial_scene = pd.read_csv(data_path + 'friends.trial.scene_delim.conll',sep='\s+',header=None,comment='#')
     dfs = [train,train_scene,trial,trial_scene]
     # with open(text_transcript,'wt') as f:
        # f.write(make_transcript(dfs))
