@@ -26,7 +26,7 @@ def __main__():
     embeddings_model = fasttext.load_model('embeddings_model.bin')
     print("Embeddings trained")
     pairs = []
-    for df in dfs:                                                                                                                                                                                                                                                  
+    for df in dfs:                                                                        
         pairs.append(make_feature_matrices(train))
     pairs = np.array(pairs)
     np.save('pairs.npy',pairs)
@@ -200,6 +200,36 @@ def get_speakers_idx(df):
             speaker = row[9]
         speakers_idx.append(cnt)
     return speakers, speakers_idx
+
+def get_speakers_idx(df):
+    ## change range ##
+    speaker = None
+    speakers = []
+    speakers_idx = []
+    cnt = -1
+    for row_no,row in df.iterrows():
+        if row[9]!=speaker:
+            speakers.append(row[9])
+            cnt += 1
+            speaker = row[9]
+        speakers_idx.append(cnt)
+    return speakers, speakers_idx
+
+def get_current_speakers(mentions_idx,sents,sents_idx):
+    curr_speakers = []
+    for idx in mentions_idx:
+        curr_speakers.append(speakers[speakers_idx[idx[0]]])
+    return curr_speakers
+
+def get_pre_speakers(mentions_idx,speakers,speakers_idx):
+    print("new")
+    pre_speakers = []
+    for idx in mentions_idx:
+        pre_speakers.append([\
+                           speakers[speakers_idx[idx[0]]-1] if (speakers_idx[idx[0]]-1)>=0 else '',\
+                           speakers[speakers_idx[idx[0]]-2] if (speakers_idx[idx[0]]-2)>=0 else ''\
+                          ])
+    return pre_speakers
 
 def get_mention_arrays(df):
     mentions = []

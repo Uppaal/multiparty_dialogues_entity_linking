@@ -5,4 +5,3 @@ data/*
 *remove_me*
 *.txt
 *.npy
-*.ipynb
