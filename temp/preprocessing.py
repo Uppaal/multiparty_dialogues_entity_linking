@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import fasttext
+import stringdist
 
 global embeddings_model
 global embeddings_size
@@ -34,7 +35,7 @@ def __main__():
 def make_feature_matrices(df):
     mentions,mentions_y,mentions_idx = get_mention_arrays(df)
     print('Mentions done')
-    words,words_idx = get_words(df)
+    words,words_idx = get_words_idx(df)
     pre_words = get_pre_words(mentions_idx,words,words_idx)
     next_words = get_next_words(mentions_idx,words,words_idx)
     print('words done')
@@ -57,10 +58,10 @@ def make_feature_matrices(df):
     phi[2] = get_phi_2(pre_words,next_words,mentions)
     phi[3] = get_phi_3(pre_sents,next_sents,curr_sents)
     phi[4] = get_phi_4(pre_ut,next_ut,curr_ut)
-    phi[1] = np.reshape(phi[1],[-1,3,50,1])
-    phi[2] = np.reshape(phi[2],[-1,7,50,1])
-    phi[3] = np.reshape(phi[3],[-1,5,50,1])
-    phi[4] = np.reshape(phi[4],[-1,5,50,1])
+    phi[1] = np.reshape(phi[1],[-1,3,embeddings_size,1])
+    phi[2] = np.reshape(phi[2],[-1,7,embeddings_size,1])
+    phi[3] = np.reshape(phi[3],[-1,5,embeddings_size,1])
+    phi[4] = np.reshape(phi[4],[-1,5,embeddings_size,1])
     print('phi done')
     pairs = make_mention_pairs(phi,mentions_y)
     print('pairs done')
@@ -98,20 +99,6 @@ def get_phi_4(pre_ut,next_ut,curr_ut):
     c = get_avg_embeddings(curr_ut)
     return np.array([np.vstack((i[0],i[1],i[2],j,k)) for i,j,k in zip(p,s,c)])
 
-def make_mention_pairs(phi,mentions_y,window=7):
-    tuples = []
-    for i in range(len(phi[1])):
-        for j in range(i+1,window+i+1):
-            if j<len(phi[1]):
-                tuples.append([\
-                              [phi[k][i] for k in range(1,5)],\
-                              [phi[k][j] for k in range(1,5)],\
-                              1 if mentions_y[i]==mentions_y[j] else 0\
-                             ])
-            else:
-                break
-    return tuples
-
 def make_transcript(dfs,idx=6):
     words = ''
     for df in dfs:
@@ -125,7 +112,7 @@ def clean(df):
 def get_mention_rows(df):
     return df[df[11]!='-'][df[11]!='NaN'][df[11]!=np.nan]
 
-def get_words(df):
+def get_words_idx(df):
     l = df[6].values
     return l, range(len(l))
 
@@ -188,7 +175,6 @@ def get_utterances_idx(df):
     return ut,ut_idx
 
 def get_speakers_idx(df):
-    ## change range ##
     speaker = None
     speakers = []
     speakers_idx = []
@@ -200,36 +186,6 @@ def get_speakers_idx(df):
             speaker = row[9]
         speakers_idx.append(cnt)
     return speakers, speakers_idx
-
-def get_speakers_idx(df):
-    ## change range ##
-    speaker = None
-    speakers = []
-    speakers_idx = []
-    cnt = -1
-    for row_no,row in df.iterrows():
-        if row[9]!=speaker:
-            speakers.append(row[9])
-            cnt += 1
-            speaker = row[9]
-        speakers_idx.append(cnt)
-    return speakers, speakers_idx
-
-def get_current_speakers(mentions_idx,sents,sents_idx):
-    curr_speakers = []
-    for idx in mentions_idx:
-        curr_speakers.append(speakers[speakers_idx[idx[0]]])
-    return curr_speakers
-
-def get_pre_speakers(mentions_idx,speakers,speakers_idx):
-    print("new")
-    pre_speakers = []
-    for idx in mentions_idx:
-        pre_speakers.append([\
-                           speakers[speakers_idx[idx[0]]-1] if (speakers_idx[idx[0]]-1)>=0 else '',\
-                           speakers[speakers_idx[idx[0]]-2] if (speakers_idx[idx[0]]-2)>=0 else ''\
-                          ])
-    return pre_speakers
 
 def get_mention_arrays(df):
     mentions = []
@@ -307,7 +263,7 @@ def get_pre_utterances(mentions_idx,ut,ut_idx):
                          ])
     return pre_ut
 
-def get_current_speakers(mentions_idx,sents,sents_idx):
+def get_current_speakers(mentions_idx,speakers,speakers_idx):
     curr_speakers = []
     for idx in mentions_idx:
         curr_speakers.append(speakers[speakers_idx[idx[0]]])
@@ -350,6 +306,41 @@ def get_multiple_avg_embeddings(l):
                 sent_arr_emb.append(np.sum(sent_emb,axis=0)/len(sent_emb))
         ret.append(sent_arr_emb)
     return np.array(ret)
+
+def make_mention_pairs(phi,mentions_y,window=7):
+    tuples = []
+    for i in range(len(phi[1])):
+        for j in range(i+1,window+i+1):
+            if j<len(phi[1]):
+                tuples.append([\
+                              [phi[k][i] for k in range(1,5)],\
+                              [phi[k][j] for k in range(1,5)],\
+                              1 if mentions_y[i]==mentions_y[j] else 0\
+                             ])
+            else:
+                break
+    return tuples
+
+def mention_pair_features(mentions,speakers,sentences,window=7):
+    ## returns normalized mention_pair features
+    def exact_string_match(m1,m2):
+        return int(m1==m2)
+    def speaker_match(s1,s2):
+        return int(s1==s2)
+    def edit_distance(m1,m2):
+        return stringdist.levenshtein(m1,m2)
+    tuples = []
+    for i in range(len(mentions)):
+        for j in range(i+1,window+i+1):
+            if j<len(mentions):
+                tuples.append([exact_string_match(mentions[i],mentions[j]),\
+                               speaker_match(speakers[i],speakers[j]),\
+                               edit_distance(mentions[i],mentions[j]),\
+                               edit_distance(sentences[i],sentences[j])])
+            else:
+                break
+    tuples = np.array(tuples)
+    return np.divide(tuples,np.sum(tuples,axis=0))
 
 if __name__=='__main__':
     __main__()
