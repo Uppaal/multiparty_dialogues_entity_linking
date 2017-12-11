@@ -34,10 +34,17 @@ class ACNN(object):
         self.phim1_3 = tf.placeholder(tf.float32, [None, 5, 50, 1])
         self.phim1_4 = tf.placeholder(tf.float32, [None, 5, 50, 1])
 
+        self.phim1_d = tf.placeholder(tf.float32, [None, 154, 1])
+
         self.phim2_1 = tf.placeholder(tf.float32, [None, 3, 50, 1])
         self.phim2_2 = tf.placeholder(tf.float32, [None, 7, 50, 1])
         self.phim2_3 = tf.placeholder(tf.float32, [None, 5, 50, 1])
         self.phim2_4 = tf.placeholder(tf.float32, [None, 5, 50, 1])
+
+        self.phim2_d = tf.placeholder(tf.float32, [None, 154, 1])
+
+        self.phi_p = tf.placeholder(tf.float32, [None, 4])
+
         self.filter_sizes = filter_sizes  # [1,2,3]
         self.label = tf.placeholder(tf.float32, [None, 1])
 
@@ -58,7 +65,7 @@ class ACNN(object):
         }
 
     def get_pooled_output(self, input_conv, kernel_size, pool_size, stride=(1, 1),
-                          padding='valid', num_filters=1, activation=tf.nn.relu, prob=0.8):
+                          padding='valid', num_filters=1, activation=tf.nn.tanh, prob=0.8):
         conv = tf.layers.conv2d(input_conv,
                                 filters=num_filters,
                                 kernel_size=kernel_size,
@@ -104,7 +111,8 @@ class ACNN(object):
             tf.stack((pooled_outputs[4], pooled_outputs[5], pooled_outputs[6], pooled_outputs[7])), [-1, 3, 4, 280])
 
     def create_mention_embeddings(self):
-        dic = {"accn1_out_m1": self.out_accn1_m1, "accn1_out_m2": self.out_accn1_m2}
+        dic = {"accn1_out_m1": self.out_accn1_m1, "accn1_out_m2": self.out_accn1_m2,
+               "phi_md1": self.phim1_d, "phi_md2": self.phim2_d}
         self.mention_embeddings = []
         for j, val2 in enumerate([1, 2]):
             with tf.name_scope("conv_accn_2_out" + str(val2)):
@@ -113,16 +121,18 @@ class ACNN(object):
                                               kernel_size=[2, 2],
                                               stride=(1, 1),
                                               padding='valid',
-                                              activation=tf.nn.relu, pool_size=[2, 3])
-            self.mention_embeddings.append(tf.reshape(pool, [-1, 280]))
+                                              activation=tf.nn.tanh, pool_size=[2, 3])
+                mention_emb = tf.concat((tf.reshape(pool, [-1, 280]), tf.reshape(dic["phi_md"+str(val2)], [-1, 154])), axis=1)
+            self.mention_embeddings.append(mention_emb)
 
     def create_mention_pair_embeddings(self):
-        input_mpair = tf.reshape(tf.stack((self.mention_embeddings[0], self.mention_embeddings[1])), [-1, 2, 1, 280])
+        input_mpair = tf.reshape(tf.stack((self.mention_embeddings[0], self.mention_embeddings[1])), [-1, 2, 1, 434])
         pool = self.get_pooled_output(input_mpair,
                                       num_filters=280,
                                       kernel_size=[1,1],
                                       pool_size=(2, 1))
-        self.mention_pair = tf.reshape(pool,[-1,280])
+        self.pool_test = pool
+        self.mention_pair = tf.concat((tf.reshape(pool,[-1,280]), self.phi_p), axis=1)
 
 
     def create_relu_layer(self):
@@ -156,10 +166,12 @@ class ACNN(object):
         return y_predict
 
     def train(self, X, Y, X_test, Y_test):
-        optimizer = tf.train.RMSPropOptimizer(learning_rate=0.0001)
-        train_op = optimizer.minimize(self.loss)
+        self.optimizer = tf.train.AdamOptimizer()
+        train_op = self.optimizer.minimize(self.loss)
+        self.init3 = tf.variables_initializer(tf.all_variables())
         self.sess.run(self.init_op)
-        self.sess.run(self.init_op2)
+        # self.sess.run(self.init_op2)
+        self.sess.run(self.init3)
         cost = float('inf')
         weights = []
         for epoch in range(3000):
@@ -167,16 +179,20 @@ class ACNN(object):
                                                                    self.phim1_2: X[1],
                                                                    self.phim1_3: X[2],
                                                                    self.phim1_4: X[3],
-                                                                   self.phim2_1: X[4],
-                                                                   self.phim2_2: X[5],
-                                                                   self.phim2_3: X[6],
-                                                                   self.phim2_4: X[7],
+                                                                   self.phim1_d: X[4],
+                                                                   self.phim2_1: X[5],
+                                                                   self.phim2_2: X[6],
+                                                                   self.phim2_3: X[7],
+                                                                   self.phim2_4: X[8],
+                                                                   self.phim2_d: X[9],
+                                                                   self.phi_p  : X[10],
                                                                    self.label: Y})
+            print (c)
             # print (self.objective(X,y))
             # print (self.sess.run([self.prob], feed_dict={self.X:X}))
-            if ((epoch + 1) % 100):
-                error = self.predict(X_test)
-                print(sum(error == Y_test))
+            # if ((epoch + 1) % 100):
+            #     error = self.predict(X_test)
+            #     print(sum(error == Y_test))
                 # print (c)
                 #     if c < cost:
                 #         cost = c
@@ -187,30 +203,51 @@ class ACNN(object):
 
 
 model = ACNN(2)
-data_all = np.load('../pairs_500.npy')
-data_first = data_all[0]
+# data_all = np.load('../pairs_500.npy')
+# data_first = data_all[0]
+data_first = None
+import pickle as pkl
+data_all = pkl.load(open("../data/train_tuples_5k.pkl",'rb'))
+phi_p = pkl.load(open("../data/phi_p.pkl", 'rb'))
+phi_p_5k = phi_p[:5000]
+temp_phi_p = []
+for every in phi_p_5k:
+    val = []
+    for each in every:
+        val.append(each)
+    temp_phi_p.append(np.asarray(val))
+
+np_phi_p = np.asarray(temp_phi_p)
 # Datasets
 phim1_1 = []
 phim1_2 = []
 phim1_3 = []
 phim1_4 = []
+phim1_d = []
+phim1_p = []
+
 phim2_1 = []
 phim2_2 = []
 phim2_3 = []
 phim2_4 = []
+phim2_d = []
+phim2_p = []
 # Labels
 labels = []
 
-for i, each in enumerate(data_first):
+for i, each in enumerate(data_all):
     phim1_1.append(each[0][0])
     phim1_2.append(each[0][1])
     phim1_3.append(each[0][2])
     phim1_4.append(each[0][3])
+    phim1_d.append(each[0][4])
+
 
     phim2_1.append(each[1][0])
     phim2_2.append(each[1][1])
     phim2_3.append(each[1][2])
     phim2_4.append(each[1][3])
+    phim2_d.append(each[1][4])
 
     labels.append(each[2])
 
@@ -218,24 +255,32 @@ np_phim1_1 = np.asarray(phim1_1)
 np_phim1_2 = np.asarray(phim1_2)
 np_phim1_3 = np.asarray(phim1_3)
 np_phim1_4 = np.asarray(phim1_4)
+np_phim1_d = np.asarray(phim1_d)
 np_phim2_1 = np.asarray(phim2_1)
 np_phim2_2 = np.asarray(phim2_2)
 np_phim2_3 = np.asarray(phim2_3)
 np_phim2_4 = np.asarray(phim2_4)
+np_phim2_d = np.asarray(phim2_d)
 np_labels = np.asarray(labels)
 
 np_phim1_1_train = np_phim1_1[0:400]
 np_phim1_2_train = np_phim1_2[0:400]
 np_phim1_3_train = np_phim1_3[0:400]
 np_phim1_4_train = np_phim1_4[0:400]
+np_phim1_d_train = np_phim1_d[0:400]
+
 np_phim2_1_train = np_phim2_1[0:400]
 np_phim2_2_train = np_phim2_2[0:400]
 np_phim2_3_train = np_phim2_3[0:400]
 np_phim2_4_train = np_phim2_4[0:400]
+np_phim2_d_train = np_phim2_d[0:400]
+
+np_phi_p_train = np_phi_p[0:400]
+
 np_labels_train = np_labels[0:400]
 
-Xtrain = [np_phim1_1_train, np_phim1_2_train, np_phim1_3_train, np_phim1_4_train, np_phim2_1_train, np_phim2_2_train,
-          np_phim2_3_train, np_phim2_4_train]
+Xtrain = [np_phim1_1_train, np_phim1_2_train, np_phim1_3_train, np_phim1_4_train, np_phim1_d_train, np_phim2_1_train, np_phim2_2_train,
+          np_phim2_3_train, np_phim2_4_train, np_phim2_d_train, np_phi_p_train]
 Ytrain = np_labels_train
 
 np_phim1_1_test = np_phim1_1[400:]
