@@ -7,3 +7,6 @@ data/*
 *.npy
 *.ipynb
 *.pyc
+*.zip
+*.gz
+*.pickle

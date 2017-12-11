@@ -3,15 +3,11 @@ import numpy as np
 import fasttext
 import stringdist
 
-global embeddings_model
-global embeddings_size
 global data_path
 
 data_path = "../data/"
 
 def __main__():
-    global embeddings_model
-    global embeddings_size
     ## hyperparameters ##
     embeddings_size = 50
     text_transcript = data_path + 'text_transcript.txt'
@@ -23,16 +19,16 @@ def __main__():
     dfs = [train,train_scene,trial,trial_scene]
     # with open(text_transcript,'wt') as f:
        # f.write(make_transcript(dfs))
-    # embeddings_model = fasttext.skipgram(text_transcript,'embeddings_model',min_count=1,dim=50)
+    # embeddings_model = fasttext.skipgram(text_transcript,'embeddings_model',min_count=1,dim=embeddings_size)
     embeddings_model = fasttext.load_model('embeddings_model.bin')
     print("Embeddings trained")
     pairs = []
     for df in dfs:                                                                        
-        pairs.append(make_feature_matrices(train))
+        pairs.append(make_feature_matrices(train),embeddings_model)
     pairs = np.array(pairs)
     np.save('pairs.npy',pairs)
 
-def make_feature_matrices(df):
+def make_feature_matrices(df,embeddings_model):
     mentions,mentions_y,mentions_idx = get_mention_arrays(df)
     print('Mentions done')
     words,words_idx = get_words_idx(df)
@@ -54,10 +50,10 @@ def make_feature_matrices(df):
     pre_speakers = get_pre_speakers(mentions_idx,speakers,speakers_idx)
     print('speakers done')
     phi = [0]*5
-    phi[1] = get_phi_1(mentions)
-    phi[2] = get_phi_2(pre_words,next_words,mentions)
-    phi[3] = get_phi_3(pre_sents,next_sents,curr_sents)
-    phi[4] = get_phi_4(pre_ut,next_ut,curr_ut)
+    phi[1] = get_phi_1(mentions,embeddings_model)
+    phi[2] = get_phi_2(pre_words,next_words,mentions,embeddings_model)
+    phi[3] = get_phi_3(pre_sents,next_sents,curr_sents,embeddings_model)
+    phi[4] = get_phi_4(pre_ut,next_ut,curr_ut,embeddings_model)
     phi[1] = np.reshape(phi[1],[-1,3,embeddings_size,1])
     phi[2] = np.reshape(phi[2],[-1,7,embeddings_size,1])
     phi[3] = np.reshape(phi[3],[-1,5,embeddings_size,1])
@@ -67,54 +63,84 @@ def make_feature_matrices(df):
     print('pairs done')
     return pairs
 
-def get_phi_1(mentions):
+def make_mention_pairs(phi,mentions_y,window=7):
+    tuples = []
+    for i in range(len(phi[1])):
+        for j in range(i+1,window+i+1):
+            if j<len(phi[1]):
+                tuples.append([\
+                              [phi[k][i] for k in range(1,5)],\
+                              [phi[k][j] for k in range(1,5)],\
+                              1 if mentions_y[i]==mentions_y[j] else 0\
+                             ])
+            else:
+                break
+    return tuples
+    
+def get_phi_1(mentions,embeddings_model):
     phi = []
     for i in mentions:
         t = i.split()
         if len(t)==0:
             raise ValueError('Empty mention')
         elif len(t)==1:
-            phi.append(get_embeddings(t+['','']))
+            phi.append(get_embeddings(t+['',''],embeddings_model))
         elif len(t)==2:
-            phi.append(get_embeddings(t+['']))
+            phi.append(get_embeddings(t+[''],embeddings_model))
         else:
-            phi.append(get_embeddings(t[0:3]))
+            phi.append(get_embeddings(t[0:3],embeddings_model))
     return np.array(phi)
 
-def get_phi_2(pre_words,next_words,mentions):
-    pre = [get_embeddings(i) for i in pre_words]
-    suc = [get_embeddings(i) for i in next_words]
-    avg = get_avg_embeddings(mentions)
+def get_phi_2(pre_words,next_words,mentions,embeddings_model):
+    pre = [get_embeddings(i,embeddings_model) for i in pre_words]
+    suc = [get_embeddings(i,embeddings_model) for i in next_words]
+    avg = get_avg_embeddings(mentions,embeddings_model)
     return np.array([np.vstack((i[0],i[1],i[2],j[0],j[1],j[2],k)) for i,j,k in zip(pre,suc,avg)])
 
-def get_phi_3(pre_sents,next_sents,curr_sents):
-    p = get_multiple_avg_embeddings(pre_sents)
-    s = get_avg_embeddings(next_sents)
-    c = get_avg_embeddings(curr_sents)
+def get_phi_3(pre_sents,next_sents,curr_sents,embeddings_model):
+    p = get_multiple_avg_embeddings(pre_sents,embeddings_model)
+    s = get_avg_embeddings(next_sents,embeddings_model)
+    c = get_avg_embeddings(curr_sents,embeddings_model)
     return np.array([np.vstack((i[0],i[1],i[2],j,k)) for i,j,k in zip(p,s,c)])
 
-def get_phi_4(pre_ut,next_ut,curr_ut):
-    p = get_multiple_avg_embeddings(pre_ut)
-    s = get_avg_embeddings(next_ut)
-    c = get_avg_embeddings(curr_ut)
+def get_phi_4(pre_ut,next_ut,curr_ut,embeddings_model):
+    p = get_multiple_avg_embeddings(pre_ut,embeddings_model)
+    s = get_avg_embeddings(next_ut,embeddings_model)
+    c = get_avg_embeddings(curr_ut,embeddings_model)
     return np.array([np.vstack((i[0],i[1],i[2],j,k)) for i,j,k in zip(p,s,c)])
 
-def make_transcript(dfs,idx=6):
-    words = ''
-    for df in dfs:
-        words += ' '.join(list(df[idx]))
-    return words
+def get_phi_d(curr_speakers,pre_speakers,embeddings_model):
+    curr_s = get_embeddings(curr_speakers,embeddings_model)
+    pre_s = [get_embeddings(i,embeddings_model) for i in pre_speakers]
+    return np.array([np.vstack((i,j[0],j[1])) for i,j in zip(curr_s,pre_s)])
 
-def clean(df):
-    df = df[[0,2,3,4,5,6,9,10,11]]
-    return df
+def get_phi_p(mentions,speakers,sentences,window=7):
+    """ returns normalized mention_pair features """
+    def exact_string_match(m1,m2):
+        return int(m1==m2)
+    def speaker_match(s1,s2):
+        return int(s1==s2)
+    def edit_distance(m1,m2):
+        return stringdist.levenshtein(m1,m2)
+    tuples = []
+    for i in range(len(mentions)):
+        for j in range(i+1,window+i+1):
+            if j<len(mentions):
+                tuples.append([exact_string_match(mentions[i],mentions[j]),\
+                               speaker_match(speakers[i],speakers[j]),\
+                               edit_distance(mentions[i],mentions[j]),\
+                               edit_distance(sentences[i],sentences[j])])
+            else:
+                break
+    tuples = np.array(tuples)
+    return np.divide(tuples,np.sum(tuples,axis=0))
 
 def get_mention_rows(df):
     return df[df[11]!='-'][df[11]!='NaN'][df[11]!=np.nan]
 
 def get_words_idx(df):
     l = df[6].values
-    return l, range(len(l))
+    return l, df.index.values
 
 def get_pre_words(mentions_idx,words,words_idx):
     pre_words = []
@@ -180,10 +206,11 @@ def get_speakers_idx(df):
     speakers_idx = []
     cnt = -1
     for row_no,row in df.iterrows():
-        if row[9]!=speaker:
-            speakers.append(row[9])
+        c_speaker = row[9] if row[9]==row[9] else ''
+        if c_speaker!=speaker:
+            speakers.append(c_speaker)
             cnt += 1
-            speaker = row[9]
+            speaker = c_speaker
         speakers_idx.append(cnt)
     return speakers, speakers_idx
 
@@ -279,26 +306,32 @@ def get_pre_speakers(mentions_idx,speakers,speakers_idx):
                           ])
     return pre_speakers
 
-def get_embeddings(l):
-    #ip : array of words : n
-    #op : array : embedding of each word : n
+def get_gender_info(mentions):
+    with open(data_path+'gender.data','rb') as f:
+        gender_data = [i.decode().strip().split('\t') for i in f.readlines()]
+    gender_words = {re.sub('[^\w\s]','',i[0].lower()).strip():np.array([int(j) for j in i[1].split(' ')]) for i in gender_data}
+    return [np.mean(np.array([gender_words[word] if word in gender_words else np.zeros(4) for word in mention.split()]),axis=0) for mention in mentions]
+
+def get_embeddings(l,embeddings_model):
+    """ip : array of words : n
+    op : array : embedding of each word : n"""
     return np.array([embeddings_model[i] for i in l])
 
-def get_avg_embeddings(l):
-    #ip : array of sentences : n x s
-    #op : array : average of embeddings of all words for each sentence : n
+def get_avg_embeddings(l,embeddings_model):
+    """ip : array of sentences : n x s
+    op : array : average of embeddings of all words for each sentence : n"""
     a = [np.array([embeddings_model[i] for i in sent.split()]) for sent in l]
     return np.array([np.sum(i,axis=0)/len(i) for i in a])
 
-def get_multiple_avg_embeddings(l):
-    #ip : array of array of sentences : n x 3 x s
-    #op : array of array of average of embeddings of all words for each sentence : n x 3
+def get_multiple_avg_embeddings(l,embeddings_model):
+    """ip : array of array of sentences : n x 3 x s
+    op : array of array of average of embeddings of all words for each sentence : n x 3"""
     ret = []
     for sent_arr in l:
         sent_arr_emb = []
         for sent in sent_arr:
             if sent=='':
-                sent_arr_emb.append([0]*embeddings_size)
+                sent_arr_emb.append(embeddings_model[''])
             else:
                 sent_emb = []
                 for word in sent.split():
@@ -307,40 +340,15 @@ def get_multiple_avg_embeddings(l):
         ret.append(sent_arr_emb)
     return np.array(ret)
 
-def make_mention_pairs(phi,mentions_y,window=7):
-    tuples = []
-    for i in range(len(phi[1])):
-        for j in range(i+1,window+i+1):
-            if j<len(phi[1]):
-                tuples.append([\
-                              [phi[k][i] for k in range(1,5)],\
-                              [phi[k][j] for k in range(1,5)],\
-                              1 if mentions_y[i]==mentions_y[j] else 0\
-                             ])
-            else:
-                break
-    return tuples
+def make_transcript(dfs,idx=6):
+    words = ''
+    for df in dfs:
+        words += ' '.join(list(df[idx]))
+    return words
 
-def mention_pair_features(mentions,speakers,sentences,window=7):
-    ## returns normalized mention_pair features
-    def exact_string_match(m1,m2):
-        return int(m1==m2)
-    def speaker_match(s1,s2):
-        return int(s1==s2)
-    def edit_distance(m1,m2):
-        return stringdist.levenshtein(m1,m2)
-    tuples = []
-    for i in range(len(mentions)):
-        for j in range(i+1,window+i+1):
-            if j<len(mentions):
-                tuples.append([exact_string_match(mentions[i],mentions[j]),\
-                               speaker_match(speakers[i],speakers[j]),\
-                               edit_distance(mentions[i],mentions[j]),\
-                               edit_distance(sentences[i],sentences[j])])
-            else:
-                break
-    tuples = np.array(tuples)
-    return np.divide(tuples,np.sum(tuples,axis=0))
+def clean(df):
+    df = df[[0,2,3,4,5,6,9,10,11]]
+    return df
 
 if __name__=='__main__':
     __main__()
