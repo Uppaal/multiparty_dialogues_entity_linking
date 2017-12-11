@@ -4,7 +4,11 @@ import math
 
 
 class ACNN(object):
-    def __init__(self, filter_sizes, beta=0.1):
+    def __init__(self, filter_sizes, beta=0.1, mode='train'):
+        if mode == 'train':
+            self.mode = 1
+        else:
+            self.mode = 0
         self.beta = beta
         self.create_placeholders(filter_sizes)
         self.create_acnn_1_outs()
@@ -53,7 +57,8 @@ class ACNN(object):
                                 strides=stride,
                                 padding=padding,
                                 activation=activation)
-        drop = tf.nn.dropout(conv, keep_prob=prob)
+        if self.mode==1:
+            drop = tf.nn.dropout(conv, keep_prob=prob)
         pool = tf.layers.max_pooling2d(drop,
                                        pool_size=pool_size,
                                        strides=stride,
