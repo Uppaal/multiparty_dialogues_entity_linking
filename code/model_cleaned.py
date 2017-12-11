@@ -59,10 +59,15 @@ class ACNN(object):
                                 activation=activation)
         if self.mode==1:
             drop = tf.nn.dropout(conv, keep_prob=prob)
-        pool = tf.layers.max_pooling2d(drop,
-                                       pool_size=pool_size,
-                                       strides=stride,
-                                       padding=padding)
+            pool = tf.layers.max_pooling2d(drop,
+                                        pool_size=pool_size,
+                                        strides=stride,
+                                        padding=padding)
+        else:
+            pool = tf.layers.max_pooling2d(conv,
+                                           pool_size=pool_size,
+                                           strides=stride,
+                                           padding=padding)
         return pool
 
     def create_acnn_1_outs(self):
