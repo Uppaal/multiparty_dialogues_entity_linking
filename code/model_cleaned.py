@@ -18,7 +18,15 @@ class ACNN(object):
         self.create_prediction()
         self.create_loss()
         self.init_op = tf.global_variables_initializer()
+        self.init_op2 = tf.local_variables_initializer()
         self.sess = tf.Session()
+        # self.sess.run(self.init_op)
+        # self.sess.run(self.init_op2)
+        # tvars = tf.trainable_variables()
+        # tvars_vals = self.sess.run(tvars)
+        #
+        # for var, val in zip(tvars, tvars_vals):
+        #     print(var.name, val)
 
     def create_placeholders(self, filter_sizes):
         self.phim1_1 = tf.placeholder(tf.float32, [None, 3, 50, 1])
@@ -118,10 +126,10 @@ class ACNN(object):
 
 
     def create_relu_layer(self):
-        self.relu_out = tf.layers.dense(self.mention_pair, 200, activation=tf.nn.relu)
+        self.relu_out = tf.layers.dense(self.mention_pair, 200, activation=tf.nn.relu, name="last_relu")
 
     def create_prediction(self):
-        self.sigmoid_out = tf.layers.dense(self.relu_out,1,activation=tf.nn.sigmoid)
+        self.sigmoid_out = tf.layers.dense(self.relu_out,1, activation=tf.nn.sigmoid, name="sigmoid")
 
     def create_loss(self):
         f = tf.trainable_variables()
@@ -129,8 +137,9 @@ class ACNN(object):
         for each in f:
             if 'bias' not in each.name:
                 weight_list.append(each)
-        self.loss = tf.reduce_mean(tf.squared_difference(self.sigmoid_out, self.label)) +\
-                    tf.contrib.layers.apply_regularization(tf.contrib.layers.l2_regularizer(self.beta), weights_list= f)
+        self.loss = tf.reduce_mean(tf.squared_difference(self.sigmoid_out, self.label)) \
+                    # +\
+                    # tf.contrib.layers.apply_regularization(tf.contrib.layers.l2_regularizer(self.beta), weights_list= f)
 
     def predict(self, X):
         y_predict = self.sess.run(self.sigmoid_out, feed_dict={self.phim1_1: X[0],
@@ -147,9 +156,10 @@ class ACNN(object):
         return y_predict
 
     def train(self, X, Y, X_test, Y_test):
-        optimizer = tf.train.AdamOptimizer()
+        optimizer = tf.train.RMSPropOptimizer(learning_rate=0.0001)
         train_op = optimizer.minimize(self.loss)
         self.sess.run(self.init_op)
+        self.sess.run(self.init_op2)
         cost = float('inf')
         weights = []
         for epoch in range(3000):
