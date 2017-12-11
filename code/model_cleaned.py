@@ -139,8 +139,7 @@ class ACNN(object):
     def train(self, X, Y, X_test, Y_test):
         optimizer = tf.train.AdamOptimizer()
         train_op = optimizer.minimize(self.loss)
-        init_op = tf.initialize_all_variables()
-        self.sess.run(init_op)
+        self.sess.run(self.init_op)
         cost = float('inf')
         weights = []
         for epoch in range(3000):
