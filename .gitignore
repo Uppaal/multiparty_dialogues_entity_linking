@@ -5,3 +5,8 @@ data/*
 *remove_me*
 *.txt
 *.npy
+*.ipynb
+*.pyc
+*.zip
+*.gz
+*.pickle
