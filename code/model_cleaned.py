@@ -153,13 +153,16 @@ class ACNN(object):
 
     def predict(self, X):
         y_predict = self.sess.run(self.sigmoid_out, feed_dict={self.phim1_1: X[0],
-                                                               self.phim1_2: X[1],
-                                                               self.phim1_3: X[2],
-                                                               self.phim1_4: X[3],
-                                                               self.phim2_1: X[4],
-                                                               self.phim2_2: X[5],
-                                                               self.phim2_3: X[6],
-                                                               self.phim2_4: X[7]})
+                                                                   self.phim1_2: X[1],
+                                                                   self.phim1_3: X[2],
+                                                                   self.phim1_4: X[3],
+                                                                   self.phim1_d: X[4],
+                                                                   self.phim2_1: X[5],
+                                                                   self.phim2_2: X[6],
+                                                                   self.phim2_3: X[7],
+                                                                   self.phim2_4: X[8],
+                                                                   self.phim2_d: X[9],
+                                                                   self.phi_p  : X[10]})
         predictor_c = lambda t: 1 if (t >= (1 - t)) else 0
         pred_func = np.vectorize(predictor_c)
         y_predict = pred_func(np.squeeze(y_predict))
@@ -190,9 +193,9 @@ class ACNN(object):
             print (c)
             # print (self.objective(X,y))
             # print (self.sess.run([self.prob], feed_dict={self.X:X}))
-            # if ((epoch + 1) % 100):
-            #     error = self.predict(X_test)
-            #     print(sum(error == Y_test))
+            if ((epoch + 1) % 100 == 0):
+                error = self.predict(X_test)
+                print(sum(error == Y_test)/float(len(Ytest)))
                 # print (c)
                 #     if c < cost:
                 #         cost = c
@@ -263,38 +266,44 @@ np_phim2_4 = np.asarray(phim2_4)
 np_phim2_d = np.asarray(phim2_d)
 np_labels = np.asarray(labels)
 
-np_phim1_1_train = np_phim1_1[0:400]
-np_phim1_2_train = np_phim1_2[0:400]
-np_phim1_3_train = np_phim1_3[0:400]
-np_phim1_4_train = np_phim1_4[0:400]
-np_phim1_d_train = np_phim1_d[0:400]
+train_len = 4000
+test_len = 1000
+np_phim1_1_train = np_phim1_1[0:train_len]
+np_phim1_2_train = np_phim1_2[0:train_len]
+np_phim1_3_train = np_phim1_3[0:train_len]
+np_phim1_4_train = np_phim1_4[0:train_len]
+np_phim1_d_train = np_phim1_d[0:train_len]
 
-np_phim2_1_train = np_phim2_1[0:400]
-np_phim2_2_train = np_phim2_2[0:400]
-np_phim2_3_train = np_phim2_3[0:400]
-np_phim2_4_train = np_phim2_4[0:400]
-np_phim2_d_train = np_phim2_d[0:400]
+np_phim2_1_train = np_phim2_1[0:train_len]
+np_phim2_2_train = np_phim2_2[0:train_len]
+np_phim2_3_train = np_phim2_3[0:train_len]
+np_phim2_4_train = np_phim2_4[0:train_len]
+np_phim2_d_train = np_phim2_d[0:train_len]
 
-np_phi_p_train = np_phi_p[0:400]
+np_phi_p_train = np_phi_p[0:train_len]
 
-np_labels_train = np_labels[0:400]
+np_labels_train = np_labels[0:train_len]
 
 Xtrain = [np_phim1_1_train, np_phim1_2_train, np_phim1_3_train, np_phim1_4_train, np_phim1_d_train, np_phim2_1_train, np_phim2_2_train,
           np_phim2_3_train, np_phim2_4_train, np_phim2_d_train, np_phi_p_train]
 Ytrain = np_labels_train
 
-np_phim1_1_test = np_phim1_1[400:]
-np_phim1_2_test = np_phim1_2[400:]
-np_phim1_3_test = np_phim1_3[400:]
-np_phim1_4_test = np_phim1_4[400:]
-np_phim2_1_test = np_phim2_1[400:]
-np_phim2_2_test = np_phim2_2[400:]
-np_phim2_3_test = np_phim2_3[400:]
-np_phim2_4_test = np_phim2_4[400:]
-np_labels_test = np_labels[400:]
+np_phim1_1_test = np_phim1_1[train_len:]
+np_phim1_2_test = np_phim1_2[train_len:]
+np_phim1_3_test = np_phim1_3[train_len:]
+np_phim1_4_test = np_phim1_4[train_len:]
+np_phim2_1_test = np_phim2_1[train_len:]
+np_phim2_2_test = np_phim2_2[train_len:]
+np_phim2_3_test = np_phim2_3[train_len:]
+np_phim2_4_test = np_phim2_4[train_len:]
 
-Xtest = [np_phim1_1_test, np_phim1_2_test, np_phim1_3_test, np_phim1_4_test, np_phim2_1_test, np_phim2_2_test,
-         np_phim2_3_test, np_phim2_4_test]
+np_phim1_d_test = np_phim1_d[train_len:]
+np_phim2_d_test = np_phim2_d[train_len:]
+np_phi_p_test   = np_phi_p[train_len:]
+np_labels_test = np_labels[train_len:]
+
+Xtest = [np_phim1_1_test, np_phim1_2_test, np_phim1_3_test, np_phim1_4_test, np_phim1_d_test, np_phim2_1_test, np_phim2_2_test,
+          np_phim2_3_test, np_phim2_4_test, np_phim2_d_test, np_phi_p_test]
 Ytest = np_labels_test
 
 model.train(Xtrain, Ytrain[..., np.newaxis], Xtest, Ytest)
