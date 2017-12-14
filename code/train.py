@@ -11,21 +11,18 @@ for every in phi_p:
         val.append(each)
     temp_phi_p.append(np.asarray(val))
 
-np_phi_p = np.asarray(temp_phi_p)
 # Datasets
 phim1_1 = []
 phim1_2 = []
 phim1_3 = []
 phim1_4 = []
 phim1_d = []
-phim1_p = []
 
 phim2_1 = []
 phim2_2 = []
 phim2_3 = []
 phim2_4 = []
 phim2_d = []
-phim2_p = []
 # Labels
 labels = []
 
@@ -54,10 +51,11 @@ np_phim2_2 = np.asarray(phim2_2)
 np_phim2_3 = np.asarray(phim2_3)
 np_phim2_4 = np.asarray(phim2_4)
 np_phim2_d = np.asarray(phim2_d)
+np_phi_p = np.asarray(temp_phi_p)
 np_labels = np.asarray(labels)
 
 total_data_len = len(np_phim1_1)
-train_len = int(0.8 * total_data_len)
+train_len = int(0.7 * total_data_len)
 test_len = total_data_len - train_len
 
 np_phim1_1_train = np_phim1_1[0:train_len]
@@ -77,19 +75,17 @@ np_labels_train = np_labels[0:train_len]
 np_labels_train = np_labels_train[..., np.newaxis]
 
 t_data = [np_phim1_1_train,
-np_phim1_2_train,
-np_phim1_3_train,
-np_phim1_4_train,
-np_phim1_d_train,
-np_phim2_1_train,
-np_phim2_2_train,
-np_phim2_3_train,
-np_phim2_4_train,
-np_phim2_d_train,
-np_phi_p_train  ,
-np_labels_train]
-
-
+          np_phim1_2_train,
+          np_phim1_3_train,
+          np_phim1_4_train,
+          np_phim1_d_train,
+          np_phim2_1_train,
+          np_phim2_2_train,
+          np_phim2_3_train,
+          np_phim2_4_train,
+          np_phim2_d_train,
+          np_phi_p_train,
+          np_labels_train]
 
 batch_size = 200
 num_batches = int(float(train_len / batch_size) + 0.5)
@@ -136,18 +132,37 @@ np_phim2_d_test = np_phim2_d[train_len:]
 np_phi_p_test = np_phi_p[train_len:]
 np_labels_test = np_labels[train_len:]
 
+tes_data = [np_phim1_1_test,
+            np_phim1_2_test,
+            np_phim1_3_test,
+            np_phim1_4_test,
+            np_phim1_d_test,
+            np_phim2_1_test,
+            np_phim2_2_test,
+            np_phim2_3_test,
+            np_phim2_4_test,
+            np_phim2_d_test,
+            np_phi_p_test,
+            np_labels_test]
 
-tes_data = [np_phim1_1_test, np_phim1_2_test, np_phim1_3_test, np_phim1_4_test, np_phim1_d_test, np_phim2_1_test,
-         np_phim2_2_test, np_phim2_3_test, np_phim2_4_test, np_phim2_d_test, np_phi_p_test]
-
+pkl.dump(t_data, open("training_split", 'wb'))
+pkl.dump(tes_data, open("test_split", 'wb'))
 
 # model1 = ACNN(2,)
 # model1.saver.restore(model1.sess, "../saved_models/trainedMODEL.ckpt")
 #
-# Xtest = [np_phim1_1_test, np_phim1_2_test, np_phim1_3_test, np_phim1_4_test, np_phim1_d_test, np_phim2_1_test,
-#          np_phim2_2_test,
-#          np_phim2_3_test, np_phim2_4_test, np_phim2_d_test, np_phi_p_test]
-# Ytest = np_labels_test
+Xtest = [np_phim1_1_test,
+         np_phim1_2_test,
+         np_phim1_3_test,
+         np_phim1_4_test,
+         np_phim1_d_test,
+         np_phim2_1_test,
+         np_phim2_2_test,
+         np_phim2_3_test,
+         np_phim2_4_test,
+         np_phim2_d_test,
+         np_phi_p_test]
+Ytest = np_labels_test
 #
 # y = model1.predict(Xtest)
 # print(sum(y == Ytest))
