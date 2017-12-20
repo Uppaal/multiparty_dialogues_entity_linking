@@ -17,16 +17,14 @@ class ACNN(object):
         self.create_relu_layer()
         self.create_prediction()
         self.create_loss()
+        self.training()
         self.init_op = tf.global_variables_initializer()
         self.init_op2 = tf.local_variables_initializer()
         self.sess = tf.Session()
-        # self.sess.run(self.init_op)
-        # self.sess.run(self.init_op2)
-        # tvars = tf.trainable_variables()
-        # tvars_vals = self.sess.run(tvars)
-        #
-        # for var, val in zip(tvars, tvars_vals):
-        #     print(var.name, val)
+        if mode == 'train':
+            self.init3 = tf.variables_initializer(tf.all_variables())
+            self.sess.run(self.init_op)
+            self.sess.run(self.init3)
 
     def create_placeholders(self, filter_sizes):
         self.phim1_1 = tf.placeholder(tf.float32, [None, 3, 50, 1])
@@ -168,154 +166,7 @@ class ACNN(object):
         y_predict = pred_func(np.squeeze(y_predict))
         return y_predict
 
-    def train(self, X, Y, X_test, Y_test):
+    def training(self):
         self.optimizer = tf.train.AdamOptimizer()
-        train_op = self.optimizer.minimize(self.loss)
-        self.init3 = tf.variables_initializer(tf.all_variables())
-        self.sess.run(self.init_op)
-        # self.sess.run(self.init_op2)
-        self.sess.run(self.init3)
-        cost = float('inf')
-        weights = []
-        for epoch in range(3000):
-            _, c = self.sess.run([train_op, self.loss], feed_dict={self.phim1_1: X[0],
-                                                                   self.phim1_2: X[1],
-                                                                   self.phim1_3: X[2],
-                                                                   self.phim1_4: X[3],
-                                                                   self.phim1_d: X[4],
-                                                                   self.phim2_1: X[5],
-                                                                   self.phim2_2: X[6],
-                                                                   self.phim2_3: X[7],
-                                                                   self.phim2_4: X[8],
-                                                                   self.phim2_d: X[9],
-                                                                   self.phi_p  : X[10],
-                                                                   self.label: Y})
-            print (c)
-            # print (self.objective(X,y))
-            # print (self.sess.run([self.prob], feed_dict={self.X:X}))
-            if ((epoch + 1) % 100 == 0):
-                error = self.predict(X_test)
-                print(sum(error == Y_test)/float(len(Ytest)))
-                # print (c)
-                #     if c < cost:
-                #         cost = c
-                #         weights = self.get_model_params()
-                #     # print("epoch %d :avg COST is %f" % (epoch, c))
-                # # print (cost)
-                # self.set_model_params(*weights)
-
-
-model = ACNN(2)
-# data_all = np.load('../pairs_500.npy')
-# data_first = data_all[0]
-data_first = None
-import pickle as pkl
-data_all = pkl.load(open("../data/train_tuples_5k.pkl",'rb'))
-phi_p = pkl.load(open("../data/phi_p.pkl", 'rb'))
-phi_p_5k = phi_p[:5000]
-temp_phi_p = []
-for every in phi_p_5k:
-    val = []
-    for each in every:
-        val.append(each)
-    temp_phi_p.append(np.asarray(val))
-
-np_phi_p = np.asarray(temp_phi_p)
-# Datasets
-phim1_1 = []
-phim1_2 = []
-phim1_3 = []
-phim1_4 = []
-phim1_d = []
-phim1_p = []
-
-phim2_1 = []
-phim2_2 = []
-phim2_3 = []
-phim2_4 = []
-phim2_d = []
-phim2_p = []
-# Labels
-labels = []
-
-for i, each in enumerate(data_all):
-    phim1_1.append(each[0][0])
-    phim1_2.append(each[0][1])
-    phim1_3.append(each[0][2])
-    phim1_4.append(each[0][3])
-    phim1_d.append(each[0][4])
-
-
-    phim2_1.append(each[1][0])
-    phim2_2.append(each[1][1])
-    phim2_3.append(each[1][2])
-    phim2_4.append(each[1][3])
-    phim2_d.append(each[1][4])
-
-    labels.append(each[2])
-
-np_phim1_1 = np.asarray(phim1_1)
-np_phim1_2 = np.asarray(phim1_2)
-np_phim1_3 = np.asarray(phim1_3)
-np_phim1_4 = np.asarray(phim1_4)
-np_phim1_d = np.asarray(phim1_d)
-np_phim2_1 = np.asarray(phim2_1)
-np_phim2_2 = np.asarray(phim2_2)
-np_phim2_3 = np.asarray(phim2_3)
-np_phim2_4 = np.asarray(phim2_4)
-np_phim2_d = np.asarray(phim2_d)
-np_labels = np.asarray(labels)
-
-train_len = 4000
-test_len = 1000
-np_phim1_1_train = np_phim1_1[0:train_len]
-np_phim1_2_train = np_phim1_2[0:train_len]
-np_phim1_3_train = np_phim1_3[0:train_len]
-np_phim1_4_train = np_phim1_4[0:train_len]
-np_phim1_d_train = np_phim1_d[0:train_len]
-
-np_phim2_1_train = np_phim2_1[0:train_len]
-np_phim2_2_train = np_phim2_2[0:train_len]
-np_phim2_3_train = np_phim2_3[0:train_len]
-np_phim2_4_train = np_phim2_4[0:train_len]
-np_phim2_d_train = np_phim2_d[0:train_len]
-
-np_phi_p_train = np_phi_p[0:train_len]
-
-np_labels_train = np_labels[0:train_len]
-
-Xtrain = [np_phim1_1_train, np_phim1_2_train, np_phim1_3_train, np_phim1_4_train, np_phim1_d_train, np_phim2_1_train, np_phim2_2_train,
-          np_phim2_3_train, np_phim2_4_train, np_phim2_d_train, np_phi_p_train]
-Ytrain = np_labels_train
-
-np_phim1_1_test = np_phim1_1[train_len:]
-np_phim1_2_test = np_phim1_2[train_len:]
-np_phim1_3_test = np_phim1_3[train_len:]
-np_phim1_4_test = np_phim1_4[train_len:]
-np_phim2_1_test = np_phim2_1[train_len:]
-np_phim2_2_test = np_phim2_2[train_len:]
-np_phim2_3_test = np_phim2_3[train_len:]
-np_phim2_4_test = np_phim2_4[train_len:]
-
-np_phim1_d_test = np_phim1_d[train_len:]
-np_phim2_d_test = np_phim2_d[train_len:]
-np_phi_p_test   = np_phi_p[train_len:]
-np_labels_test = np_labels[train_len:]
-
-Xtest = [np_phim1_1_test, np_phim1_2_test, np_phim1_3_test, np_phim1_4_test, np_phim1_d_test, np_phim2_1_test, np_phim2_2_test,
-          np_phim2_3_test, np_phim2_4_test, np_phim2_d_test, np_phi_p_test]
-Ytest = np_labels_test
-
-model.train(Xtrain, Ytrain[..., np.newaxis], Xtest, Ytest)
-y = model.predict(Xtest)
-print(sum(y == Ytest))
-print("OK")
-
-# print(model.session.run(model.pooled_outputs, feed_dict={model.phim1_1: np_phim1_1,
-#                                                          model.phim1_2: np_phim1_2,
-#                                                          model.phim1_3: np_phim1_3,
-#                                                          model.phim1_4: np_phim1_4,
-#                                                          model.phim2_1: np_phim2_1,
-#                                                          model.phim2_2: np_phim2_2,
-#                                                          model.phim2_3: np_phim2_3,
-#
+        self.saver = tf.train.Saver()
+        self.train_op = self.optimizer.minimize(self.loss)
