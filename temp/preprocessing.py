@@ -10,7 +10,7 @@ data_path = "../data/"
 
 def __main__():
     embeddings_size = 50
-    text_transcript = data_path + 'text_transcript.txt'
+    text_transcript = data_path + 'temp/text_transcript.txt'
     
     train = pd.read_csv(data_path + 'friends.train.episode_delim.conll',sep='\s+',header=None,comment='#')
     train_scene = pd.read_csv(data_path + 'friends.train.scene_delim.conll',sep='\s+',header=None,comment='#')
@@ -64,10 +64,10 @@ def __main__():
         print('phi done')
         pairs = make_mention_pairs(phi,mentions_y)
         print('pairs done')
-        np.save('pairs_'+df_idx+'.npy',pairs)
+        np.save('temp/pairs_'+df_idx+'.npy',pairs)
         all_pairs.append(pairs)
         phi_p = get_phi_p(mentions,curr_speakers,curr_sents)
-        np.save('phi_p_'+df_idx+'.npy',phi_p)
+        np.save('temp/phi_p_'+df_idx+'.npy',phi_p)
         all_phi_p.append(phi_p)
     # all_pairs = np.array(all_pairs)
     # np.save('pairs.npy',all_pairs)
