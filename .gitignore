@@ -10,3 +10,4 @@ data/*
 *.zip
 *.gz
 *.pickle
+*saved_models*
