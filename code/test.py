@@ -2,7 +2,7 @@
 import numpy as np
 import pickle as pkl
 from sklearn.metrics import average_precision_score
-from model_cleaned import ACNN
+from model_acnn import ACNN
 
 train = False
 if train:
