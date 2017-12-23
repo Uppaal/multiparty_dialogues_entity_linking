@@ -1,7 +1,8 @@
 # from code.model_cleaned import ACNN
 import numpy as np
 import pickle as pkl
-from code.model_cleaned import ACNN
+from sklearn.metrics import average_precision_score
+from model_cleaned import ACNN
 
 train = False
 if train:
@@ -73,8 +74,8 @@ else:
              np_phim2_2_test, np_phim2_3_test, np_phim2_4_test, np_phim2_d_test, np_phi_p_test]
 
 
-    model1 = ACNN(2,)
-    model1.saver.restore(model1.sess, "../saved_models/trainedMODEL.ckpt")
+    model1 = ACNN(2, mode='test')
+    model1.saver.restore(model1.sess, "../saved_models/NLP_Blake/trainedMODEL_newrun.ckpt")
 
     Xtest = [np_phim1_1_test, np_phim1_2_test, np_phim1_3_test, np_phim1_4_test, np_phim1_d_test, np_phim2_1_test,
              np_phim2_2_test,
@@ -82,5 +83,7 @@ else:
     Ytest = np_labels_test
 
     y = model1.predict(Xtest)
-    print(sum(y == Ytest))
+
+    print((sum(y == Ytest))/float(len(Ytest)))
+    print (average_precision_score(Ytest,y))
     print("OK")
